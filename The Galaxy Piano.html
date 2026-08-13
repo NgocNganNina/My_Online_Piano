@@ -1,0 +1,2621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Celestial Keys — A Galaxy Piano</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-deep: #030615;
+  --bg-mid: #0a1230;
+  --gold: #f4d27a;
+  --gold-bright: #ffe9a8;
+  --gold-dim: #b89a5a;
+  --teal: #5eead4;
+  --teal-bright: #7df0e0;
+  --rose: #f9a8d4;
+  --violet: #c4b5fd;
+  --cream: #faf6e9;
+  --ivory: #f5edd6;
+  --black-key: #0d0a1a;
+  --border: rgba(244, 210, 122, 0.18);
+  --border-strong: rgba(244, 210, 122, 0.4);
+  --glass: rgba(15, 22, 50, 0.55);
+  --glass-light: rgba(30, 40, 80, 0.4);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%; width: 100%;
+  overflow: hidden;
+  font-family: 'Outfit', sans-serif;
+  background: var(--bg-deep);
+  color: var(--cream);
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+#galaxy-bg { position: fixed; inset: 0; z-index: 0; }
+#effects-canvas { position: fixed; inset: 0; z-index: 50; pointer-events: none; }
+
+.app { position: relative; z-index: 2; height: 100vh; display: flex; flex-direction: column; }
+
+/* === HEADER === */
+header {
+  padding: 0.7rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(to bottom, rgba(3, 6, 21, 0.9), rgba(3, 6, 21, 0.3));
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: 10;
+  gap: 1rem;
+  flex-shrink: 0;
+}
+
+.logo { display: flex; align-items: center; gap: 0.75rem; }
+.logo-icon {
+  width: 36px; height: 36px;
+  display: grid; place-items: center;
+}
+.logo-icon::before {
+  content: '✦';
+  font-size: 28px;
+  color: var(--gold-bright);
+  text-shadow: 0 0 14px var(--gold), 0 0 30px rgba(244, 210, 122, 0.4);
+  animation: pulse 3s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 0.8; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+.logo-text {
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 300;
+  font-size: 1.5rem;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+.logo-text em { font-style: italic; font-weight: 500; color: var(--gold-bright); }
+.logo-sub {
+  font-size: 0.6rem;
+  color: var(--gold-dim);
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  margin-top: 3px;
+}
+
+.mode-tabs {
+  display: flex;
+  gap: 0.2rem;
+  background: rgba(15, 22, 50, 0.5);
+  padding: 0.25rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+.mode-tab {
+  padding: 0.4rem 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--cream);
+  opacity: 0.55;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  font-family: inherit;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.mode-tab:hover { opacity: 0.9; background: rgba(244, 210, 122, 0.08); }
+.mode-tab.active {
+  background: linear-gradient(135deg, rgba(244, 210, 122, 0.22), rgba(94, 234, 212, 0.1));
+  color: var(--gold-bright);
+  opacity: 1;
+  box-shadow: 0 2px 10px rgba(244, 210, 122, 0.15);
+}
+
+.header-right { display: flex; align-items: center; gap: 0.6rem; }
+
+.rec-badge {
+  display: none;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.7rem;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 999px;
+  font-size: 0.68rem;
+  color: #fca5a5;
+  letter-spacing: 0.1em;
+}
+.rec-badge.active { display: flex; }
+.rec-badge::before {
+  content: '';
+  width: 7px; height: 7px;
+  background: #ef4444;
+  border-radius: 50%;
+  animation: blink 1s ease-in-out infinite;
+}
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+
+/* === MAIN LAYOUT === */
+main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 280px 1fr 250px;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.panel {
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1rem;
+  overflow-y: auto;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+.panel::-webkit-scrollbar { width: 4px; }
+.panel::-webkit-scrollbar-track { background: transparent; }
+.panel::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
+
+.panel-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: var(--gold-bright);
+  margin-bottom: 0.1rem;
+}
+.panel-sub {
+  font-size: 0.6rem;
+  color: var(--gold-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  margin-bottom: 0.75rem;
+}
+
+/* === SONG LIST === */
+.song-list { display: flex; flex-direction: column; gap: 0.35rem; }
+.song-item {
+  padding: 0.55rem 0.75rem;
+  background: rgba(15, 22, 50, 0.4);
+  border: 1px solid transparent;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  position: relative;
+  overflow: hidden;
+}
+.song-item::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 2px;
+  background: var(--gold);
+  transform: scaleY(0);
+  transition: transform 0.3s ease;
+}
+.song-item:hover { background: rgba(244, 210, 122, 0.08); border-color: var(--border); transform: translateX(2px); }
+.song-item:hover::before { transform: scaleY(1); }
+.song-item.active { background: rgba(244, 210, 122, 0.12); border-color: var(--border-strong); }
+.song-item.active::before { transform: scaleY(1); }
+.song-title { font-size: 0.84rem; font-weight: 500; color: var(--cream); }
+.song-composer { font-size: 0.72rem; color: var(--gold-dim); font-style: italic; font-family: 'Cormorant Garamond', serif; }
+
+/* === CENTER AREA === */
+.center-area { display: flex; flex-direction: column; gap: 0.75rem; min-width: 0; min-height: 0; }
+
+.now-playing {
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.7rem 1.1rem;
+  backdrop-filter: blur(20px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 56px;
+  flex-shrink: 0;
+}
+.np-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+.np-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.15rem;
+  color: var(--cream);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.np-status {
+  font-size: 0.68rem;
+  color: var(--gold-dim);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.np-controls { display: flex; gap: 0.35rem; align-items: center; flex-shrink: 0; }
+
+.icon-btn {
+  width: 34px; height: 34px;
+  display: grid; place-items: center;
+  background: rgba(244, 210, 122, 0.1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--gold-bright);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+.icon-btn:hover { background: rgba(244, 210, 122, 0.2); border-color: var(--border-strong); }
+.icon-btn.primary {
+  width: 38px; height: 38px;
+  background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+  color: var(--bg-deep);
+  border: none;
+  font-weight: 700;
+}
+.icon-btn.primary:hover { filter: brightness(1.15); box-shadow: 0 0 20px rgba(244, 210, 122, 0.35); }
+.icon-btn:disabled { opacity: 0.3; cursor: default; }
+
+.progress-bar {
+  height: 3px;
+  background: rgba(244, 210, 122, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+  width: 120px;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(to right, var(--gold-dim), var(--gold-bright));
+  width: 0%;
+  transition: width 0.2s ease;
+  box-shadow: 0 0 6px var(--gold);
+}
+
+/* === PIANO === */
+.piano-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-height: 0;
+  position: relative;
+}
+
+.piano-glow {
+  position: absolute;
+  inset: -30px -20px -10px;
+  background: radial-gradient(ellipse at center bottom, rgba(244, 210, 122, 0.12), transparent 60%);
+  pointer-events: none;
+  opacity: 0.6;
+  transition: opacity 0.3s ease;
+}
+.piano-glow.active { opacity: 1; }
+
+.piano-frame {
+  background: linear-gradient(to bottom, #2a1d0e 0%, #1a1206 50%, #0d0903 100%);
+  padding: 12px 12px 8px;
+  border-radius: 12px;
+  box-shadow: 
+    0 25px 50px rgba(0, 0, 0, 0.6),
+    0 0 80px rgba(244, 210, 122, 0.06),
+    inset 0 2px 3px rgba(255, 233, 168, 0.12),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.4);
+  position: relative;
+  z-index: 1;
+}
+.piano-frame::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--gold-dim), var(--gold), var(--gold-dim), transparent);
+  opacity: 0.6;
+}
+.piano-brand {
+  text-align: center;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.6rem;
+  letter-spacing: 0.4em;
+  color: var(--gold-dim);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  opacity: 0.7;
+}
+
+.piano-keys-wrap {
+  position: relative;
+  height: 190px;
+  background: #000;
+  border-radius: 3px;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.5), inset 0 3px 6px rgba(0,0,0,0.4);
+}
+
+.piano-keys {
+  position: relative;
+  height: 100%;
+  display: flex;
+  gap: 1px;
+  padding: 0 1px;
+}
+
+.white-key {
+  flex: 1;
+  position: relative;
+  background: linear-gradient(to bottom, #faf6e9 0%, #f5edd6 70%, #ebe1c0 95%, #d8cfb0 100%);
+  border-radius: 0 0 3px 3px;
+  box-shadow: 
+    inset 0 -6px 10px rgba(180, 150, 80, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset -1px 0 0 rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  transition: all 0.08s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding-bottom: 8px;
+  overflow: hidden;
+}
+
+.white-key::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.35) 0%, transparent 40%);
+  opacity: 0;
+  transform: translateY(3px) scaleY(0.96);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  pointer-events: none;
+  border-radius: inherit;
+}
+.white-key:hover::before { opacity: 0.6; transform: translateY(1px) scaleY(0.98); }
+
+.white-key.active {
+  background: linear-gradient(to bottom, #e8dfc5 0%, #ddd3b8 60%, #c8bf9e 100%);
+  transform: translateY(2px);
+  box-shadow: 
+    inset 0 -3px 6px rgba(180, 150, 80, 0.12),
+    inset 0 2px 4px rgba(0, 0, 0, 0.15),
+    0 1px 2px rgba(0, 0, 0, 0.3);
+}
+.white-key.active::before { opacity: 0; }
+
+.white-key.highlight {
+  background: linear-gradient(to bottom, #fff5d6 0%, #ffe9a8 50%, #f4d27a 100%);
+  box-shadow: 
+    0 0 20px rgba(244, 210, 122, 0.5),
+    inset 0 -6px 10px rgba(244, 210, 122, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  animation: highlight-pulse 1s ease-in-out infinite;
+}
+@keyframes highlight-pulse {
+  0%, 100% { box-shadow: 0 0 15px rgba(244, 210, 122, 0.4), inset 0 -6px 10px rgba(244, 210, 122, 0.12); }
+  50% { box-shadow: 0 0 30px rgba(244, 210, 122, 0.7), inset 0 -6px 10px rgba(244, 210, 122, 0.2); }
+}
+
+.white-key.error {
+  background: linear-gradient(to bottom, #f8d8d8 0%, #f0b8b8 100%);
+  animation: error-flash 0.4s ease;
+}
+@keyframes error-flash {
+  0%, 100% { background: linear-gradient(to bottom, #faf6e9 0%, #f5edd6 70%, #ebe1c0 95%); }
+  50% { background: linear-gradient(to bottom, #f8d8d8 0%, #f0b8b8 100%); }
+}
+
+.black-key {
+  position: absolute;
+  top: 0;
+  width: 4.2%;
+  height: 62%;
+  background: linear-gradient(to bottom, #1a1525 0%, #0d0a1a 50%, #050308 100%);
+  border-radius: 0 0 3px 3px;
+  box-shadow: 
+    inset 0 -4px 6px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 1px 0 0 rgba(255, 255, 255, 0.03),
+    0 2px 4px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  z-index: 2;
+  transition: all 0.08s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding-bottom: 6px;
+  overflow: hidden;
+}
+
+.black-key::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.08) 0%, transparent 30%);
+  opacity: 0;
+  transform: translateY(2px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  pointer-events: none;
+  border-radius: inherit;
+}
+.black-key:hover::before { opacity: 1; transform: translateY(0); }
+
+.black-key.active {
+  background: linear-gradient(to bottom, #2a2035 0%, #15101f 100%);
+  transform: translateY(2px);
+  height: 60%;
+  box-shadow: 
+    inset 0 -2px 4px rgba(0, 0, 0, 0.6),
+    inset 0 2px 3px rgba(0, 0, 0, 0.4);
+}
+
+.black-key.highlight {
+  background: linear-gradient(to bottom, #4a3d1a 0%, #2a2310 100%);
+  box-shadow: 0 0 15px rgba(244, 210, 122, 0.4), inset 0 -4px 6px rgba(244, 210, 122, 0.1);
+  animation: highlight-pulse 1s ease-in-out infinite;
+}
+
+.key-star {
+  position: absolute;
+  top: 5px;
+  right: 4px;
+  font-size: 7px;
+  color: rgba(255, 255, 255, 0.35);
+  animation: star-twinkle 3s ease-in-out infinite;
+  pointer-events: none;
+}
+.white-key .key-star { color: rgba(180, 150, 80, 0.4); }
+@keyframes star-twinkle {
+  0%, 100% { opacity: 0.2; transform: scale(0.9); }
+  50% { opacity: 0.6; transform: scale(1.15); }
+}
+
+.key-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: rgba(100, 80, 40, 0.6);
+  letter-spacing: 0.02em;
+  pointer-events: none;
+}
+.black-key .key-label { color: rgba(200, 180, 140, 0.5); font-size: 0.62rem; }
+
+.key-note {
+  font-size: 0.58rem;
+  color: rgba(100, 80, 40, 0.4);
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  margin-top: 1px;
+  pointer-events: none;
+}
+
+/* === RIGHT PANEL === */
+.effect-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem;
+}
+.effect-btn {
+  padding: 0.5rem 0.3rem;
+  background: rgba(15, 22, 50, 0.4);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  font-family: inherit;
+  color: var(--cream);
+}
+.effect-btn:hover { background: rgba(244, 210, 122, 0.08); border-color: var(--border); }
+.effect-btn.active {
+  background: linear-gradient(135deg, rgba(244, 210, 122, 0.2), rgba(94, 234, 212, 0.08));
+  border-color: var(--border-strong);
+  color: var(--gold-bright);
+}
+.effect-icon { font-size: 1.1rem; line-height: 1; }
+.effect-name { font-size: 0.58rem; text-align: center; opacity: 0.8; line-height: 1.1; }
+
+.volume-section { margin-top: 1rem; }
+.volume-slider {
+  width: 100%;
+  height: 4px;
+  background: rgba(244, 210, 122, 0.1);
+  border-radius: 2px;
+  appearance: none;
+  -webkit-appearance: none;
+  outline: none;
+  margin-top: 0.4rem;
+}
+.volume-slider::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  background: var(--gold-bright);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 8px var(--gold);
+}
+.volume-slider::-moz-range-thumb {
+  width: 14px; height: 14px;
+  background: var(--gold-bright);
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 0 8px var(--gold);
+}
+
+.stats-box {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: rgba(15, 22, 50, 0.4);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  margin-bottom: 0.3rem;
+}
+.stat-row:last-child { margin-bottom: 0; }
+.stat-label { color: var(--gold-dim); }
+.stat-value { color: var(--cream); font-weight: 500; }
+
+/* === MODE CONTENT === */
+.mode-content { display: none; }
+.mode-content.active { display: block; }
+
+.info-card {
+  padding: 0.75rem;
+  background: rgba(94, 234, 212, 0.05);
+  border: 1px solid rgba(94, 234, 212, 0.15);
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+}
+.info-card p { font-size: 0.76rem; line-height: 1.5; color: var(--cream); }
+.info-card .accent { color: var(--teal-bright); }
+
+.key-legend {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.3rem;
+  margin-top: 0.5rem;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.7rem;
+  padding: 0.3rem 0.4rem;
+  background: rgba(15, 22, 50, 0.4);
+  border-radius: 5px;
+}
+.legend-key {
+  display: inline-grid;
+  place-items: center;
+  width: 20px; height: 20px;
+  background: rgba(244, 210, 122, 0.15);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--gold-bright);
+}
+
+/* === GAME UI === */
+.game-info {
+  text-align: center;
+  padding: 1rem 0.5rem;
+}
+.game-score {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--gold-bright);
+  line-height: 1;
+  text-shadow: 0 0 20px rgba(244, 210, 122, 0.3);
+}
+.game-label {
+  font-size: 0.65rem;
+  color: var(--gold-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  margin-top: 0.3rem;
+}
+.game-status {
+  margin-top: 0.75rem;
+  padding: 0.5rem;
+  background: rgba(15, 22, 50, 0.4);
+  border-radius: 8px;
+  font-size: 0.78rem;
+  color: var(--teal-bright);
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.game-status.watch { color: var(--gold-bright); }
+.game-status.play { color: var(--teal-bright); }
+.game-status.correct { color: #86efac; }
+.game-status.wrong { color: #fca5a5; }
+
+.btn {
+  width: 100%;
+  padding: 0.6rem;
+  background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+  border: none;
+  border-radius: 8px;
+  color: var(--bg-deep);
+  font-weight: 600;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  letter-spacing: 0.03em;
+  margin-top: 0.5rem;
+}
+.btn:hover { filter: brightness(1.1); box-shadow: 0 4px 16px rgba(244, 210, 122, 0.3); }
+.btn:disabled { opacity: 0.4; cursor: default; }
+.btn.secondary {
+  background: rgba(244, 210, 122, 0.1);
+  border: 1px solid var(--border);
+  color: var(--gold-bright);
+}
+.btn.secondary:hover { background: rgba(244, 210, 122, 0.18); }
+
+/* === COMPOSE UI === */
+.compose-list { display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.5rem; }
+.compose-item {
+  padding: 0.5rem 0.6rem;
+  background: rgba(15, 22, 50, 0.4);
+  border: 1px solid transparent;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.76rem;
+  gap: 0.4rem;
+}
+.compose-item:hover { border-color: var(--border); }
+.compose-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.compose-actions { display: flex; gap: 0.25rem; }
+.mini-btn {
+  width: 24px; height: 24px;
+  display: grid; place-items: center;
+  background: rgba(244, 210, 122, 0.1);
+  border: none;
+  border-radius: 5px;
+  color: var(--gold-bright);
+  cursor: pointer;
+  font-size: 0.7rem;
+  transition: all 0.2s;
+}
+.mini-btn:hover { background: rgba(244, 210, 122, 0.2); }
+.mini-btn.del { color: #fca5a5; background: rgba(239, 68, 68, 0.1); }
+.mini-btn.del:hover { background: rgba(239, 68, 68, 0.2); }
+
+.input-field {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  background: rgba(15, 22, 50, 0.5);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--cream);
+  font-size: 0.78rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.input-field:focus { border-color: var(--gold); }
+
+/* === LESSON UI === */
+.lesson-step {
+  padding: 0.75rem;
+  background: rgba(94, 234, 212, 0.05);
+  border: 1px solid rgba(94, 234, 212, 0.15);
+  border-radius: 8px;
+  margin-top: 0.5rem;
+}
+.lesson-step p { font-size: 0.78rem; line-height: 1.5; }
+.lesson-progress {
+  font-size: 0.65rem;
+  color: var(--gold-dim);
+  margin-top: 0.5rem;
+  letter-spacing: 0.1em;
+}
+
+/* === REVIEW MODAL === */
+.review-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(3, 6, 21, 0.85);
+  backdrop-filter: blur(10px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.review-modal.active { display: flex; }
+.review-content {
+  background: var(--glass);
+  border: 1px solid var(--border-strong);
+  border-radius: 16px;
+  padding: 2rem;
+  max-width: 480px;
+  width: 90%;
+  text-align: center;
+}
+.review-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.8rem;
+  color: var(--gold-bright);
+  margin-bottom: 0.3rem;
+}
+.review-sub {
+  font-size: 0.75rem;
+  color: var(--gold-dim);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 1.5rem;
+}
+.review-progress-bar {
+  height: 6px;
+  background: rgba(244, 210, 122, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+.review-progress-fill {
+  height: 100%;
+  background: linear-gradient(to right, var(--gold-dim), var(--gold-bright), var(--teal));
+  width: 0%;
+  transition: width 0.1s linear;
+  box-shadow: 0 0 10px var(--gold);
+}
+.review-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.review-stat { text-align: center; }
+.review-stat-value {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: var(--gold-bright);
+}
+.review-stat-label {
+  font-size: 0.62rem;
+  color: var(--gold-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  margin-top: 0.2rem;
+}
+
+/* === TOAST === */
+.toast-container {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  align-items: center;
+}
+.toast {
+  padding: 0.6rem 1.2rem;
+  background: rgba(15, 22, 50, 0.9);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  font-size: 0.78rem;
+  color: var(--cream);
+  backdrop-filter: blur(20px);
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.3s ease;
+  pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast.success { border-color: rgba(134, 239, 172, 0.4); color: #86efac; }
+.toast.error { border-color: rgba(252, 165, 165, 0.4); color: #fca5a5; }
+
+/* === RESPONSIVE === */
+@media (max-width: 1100px) {
+  main { grid-template-columns: 240px 1fr 220px; }
+  .effect-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 850px) {
+  main { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; }
+  .panel { max-height: 200px; }
+  .piano-keys-wrap { height: 140px; }
+  .mode-tabs { flex-wrap: wrap; }
+  .mode-tab { font-size: 0.7rem; padding: 0.3rem 0.5rem; }
+}
+
+.fade-in { animation: fadeIn 0.5s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
+
+<canvas id="galaxy-bg"></canvas>
+<canvas id="effects-canvas"></canvas>
+
+<div class="app">
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon"></div>
+      <div>
+        <div class="logo-text">Celestial <em>Keys</em></div>
+        <div class="logo-sub">A Galaxy Piano</div>
+      </div>
+    </div>
+    
+    <div class="mode-tabs" id="mode-tabs">
+      <button class="mode-tab active" data-mode="freeplay">Free Play</button>
+      <button class="mode-tab" data-mode="learn">Learn Songs</button>
+      <button class="mode-tab" data-mode="memory">Memory Game</button>
+      <button class="mode-tab" data-mode="compose">Compose</button>
+      <button class="mode-tab" data-mode="lessons">Lessons</button>
+    </div>
+    
+    <div class="header-right">
+      <div class="rec-badge" id="rec-badge">RECORDING</div>
+      <button class="icon-btn" id="review-btn" title="Review your performance" style="display:none">↻</button>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main>
+    <!-- LEFT PANEL -->
+    <aside class="panel" id="left-panel">
+      <!-- Free Play -->
+      <div class="mode-content active" data-mode="freeplay">
+        <div class="panel-title">Free Play</div>
+        <div class="panel-sub">Play freely</div>
+        <div class="info-card">
+          <p>Play the piano with your keyboard. Each key triggers a celestial burst. Try different effects on the right panel.</p>
+        </div>
+        <div class="panel-sub" style="margin-top:0.8rem">Key Mapping</div>
+        <div class="key-legend" id="key-legend"></div>
+        <button class="btn secondary" id="fp-record-btn">Start Recording</button>
+      </div>
+
+      <!-- Learn Songs -->
+      <div class="mode-content" data-mode="learn">
+        <div class="panel-title">Song Library</div>
+        <div class="panel-sub">Learn to play</div>
+        <div class="song-list" id="song-list"></div>
+        <div style="margin-top:0.75rem">
+          <label class="panel-sub" style="display:block;margin-bottom:0.3rem">Playback Speed</label>
+          <input type="range" class="volume-slider" id="song-speed" min="0.5" max="2" step="0.1" value="1">
+        </div>
+      </div>
+
+      <!-- Memory Game -->
+      <div class="mode-content" data-mode="memory">
+        <div class="panel-title">Memory Game</div>
+        <div class="panel-sub">Remember the notes</div>
+        <div class="game-info">
+          <div class="game-score" id="game-score">0</div>
+          <div class="game-label">Level Reached</div>
+          <div class="game-status" id="game-status">Press Start to begin</div>
+        </div>
+        <button class="btn" id="game-start-btn">Start Game</button>
+        <div style="margin-top:0.75rem;padding:0.6rem;background:rgba(15,22,50,0.4);border-radius:8px;font-size:0.72rem;line-height:1.5">
+          <strong style="color:var(--gold-bright)">How to play:</strong> Watch the sequence of glowing keys, then repeat it by pressing the same keys. Each round adds one more note.
+        </div>
+      </div>
+
+      <!-- Compose -->
+      <div class="mode-content" data-mode="compose">
+        <div class="panel-title">Compose</div>
+        <div class="panel-sub">Write your own song</div>
+        <div class="info-card">
+          <p>Play freely to compose. Recording is automatic. Save your composition when done.</p>
+        </div>
+        <input type="text" class="input-field" id="compose-name" placeholder="Composition name...">
+        <button class="btn" id="compose-save-btn">Save Composition</button>
+        <button class="btn secondary" id="compose-clear-btn">Clear Recording</button>
+        <div class="panel-sub" style="margin-top:0.8rem">Saved Songs</div>
+        <div class="compose-list" id="compose-list">
+          <div style="font-size:0.72rem;color:var(--gold-dim);padding:0.5rem;text-align:center" id="compose-empty">No saved compositions yet</div>
+        </div>
+      </div>
+
+      <!-- Lessons -->
+      <div class="mode-content" data-mode="lessons">
+        <div class="panel-title">Online Lessons</div>
+        <div class="panel-sub">Step by step</div>
+        <div class="song-list" id="lesson-list"></div>
+        <div id="lesson-detail" style="margin-top:0.75rem"></div>
+      </div>
+    </aside>
+
+    <!-- CENTER -->
+    <section class="center-area">
+      <div class="now-playing">
+        <div class="np-info">
+          <div class="np-title" id="np-title">Welcome to Celestial Keys</div>
+          <div class="np-status" id="np-status">Press any key to begin · A = Do (C)</div>
+        </div>
+        <div class="np-controls" id="np-controls">
+          <div class="progress-bar" id="progress-container" style="display:none">
+            <div class="progress-fill" id="progress-fill"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="piano-container">
+        <div class="piano-glow" id="piano-glow"></div>
+        <div class="piano-frame">
+          <div class="piano-brand">Celestial · Harmonia</div>
+          <div class="piano-keys-wrap">
+            <div class="piano-keys" id="piano-keys"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT PANEL -->
+    <aside class="panel" id="right-panel">
+      <div class="panel-title">Effects</div>
+      <div class="panel-sub">Burst on key press</div>
+      <div class="effect-grid" id="effect-grid"></div>
+      
+      <div class="volume-section">
+        <div class="panel-sub">Volume</div>
+        <input type="range" class="volume-slider" id="volume-slider" min="0" max="100" value="60">
+      </div>
+
+      <div class="stats-box">
+        <div class="stat-row"><span class="stat-label">Notes Played</span><span class="stat-value" id="stat-notes">0</span></div>
+        <div class="stat-row"><span class="stat-label">Session Time</span><span class="stat-value" id="stat-time">0:00</span></div>
+        <div class="stat-row"><span class="stat-label">Current Effect</span><span class="stat-value" id="stat-effect">Fireworks</span></div>
+      </div>
+    </aside>
+  </main>
+</div>
+
+<!-- REVIEW MODAL -->
+<div class="review-modal" id="review-modal">
+  <div class="review-content">
+    <div class="review-title">Performance Review</div>
+    <div class="review-sub">Fast-forward playback</div>
+    <div class="review-progress-bar">
+      <div class="review-progress-fill" id="review-progress"></div>
+    </div>
+    <div class="review-stats" id="review-stats">
+      <div class="review-stat"><div class="review-stat-value" id="rs-notes">0</div><div class="review-stat-label">Notes</div></div>
+      <div class="review-stat"><div class="review-stat-value" id="rs-duration">0s</div><div class="review-stat-label">Duration</div></div>
+      <div class="review-stat"><div class="review-stat-value" id="rs-speed">3×</div><div class="review-stat-label">Speed</div></div>
+    </div>
+    <button class="btn" id="review-close-btn">Close</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+// ==================== CONFIGURATION ====================
+const KEY_DEFS = [
+  { note: 'C4',  freq: 261.63, key: 'a', type: 'w', sol: 'Do' },
+  { note: 'C#4', freq: 277.18, key: 'w', type: 'b', pos: 1 },
+  { note: 'D4',  freq: 293.66, key: 's', type: 'w', sol: 'Re' },
+  { note: 'D#4', freq: 311.13, key: 'e', type: 'b', pos: 2 },
+  { note: 'E4',  freq: 329.63, key: 'd', type: 'w', sol: 'Mi' },
+  { note: 'F4',  freq: 349.23, key: 'f', type: 'w', sol: 'Fa' },
+  { note: 'F#4', freq: 369.99, key: 't', type: 'b', pos: 4 },
+  { note: 'G4',  freq: 392.00, key: 'g', type: 'w', sol: 'Sol' },
+  { note: 'G#4', freq: 415.30, key: 'y', type: 'b', pos: 5 },
+  { note: 'A4',  freq: 440.00, key: 'h', type: 'w', sol: 'La' },
+  { note: 'A#4', freq: 466.16, key: 'u', type: 'b', pos: 6 },
+  { note: 'B4',  freq: 493.88, key: 'j', type: 'w', sol: 'Ti' },
+  { note: 'C5',  freq: 523.25, key: 'k', type: 'w', sol: 'Do' },
+  { note: 'C#5', freq: 554.37, key: 'o', type: 'b', pos: 8 },
+  { note: 'D5',  freq: 587.33, key: 'l', type: 'w', sol: 'Re' },
+  { note: 'D#5', freq: 622.25, key: 'p', type: 'b', pos: 9 },
+  { note: 'E5',  freq: 659.25, key: ';', type: 'w', sol: 'Mi' },
+  { note: 'F5',  freq: 698.46, key: "'", type: 'w', sol: 'Fa' },
+  { note: 'F#5', freq: 739.99, key: '[', type: 'b', pos: 11 },
+  { note: 'G5',  freq: 783.99, key: 'z', type: 'w', sol: 'Sol' },
+  { note: 'G#5', freq: 830.61, key: 'x', type: 'b', pos: 12 },
+  { note: 'A5',  freq: 880.00, key: 'c', type: 'w', sol: 'La' },
+  { note: 'A#5', freq: 932.33, key: 'v', type: 'b', pos: 13 },
+  { note: 'B5',  freq: 987.77, key: 'b', type: 'w', sol: 'Ti' },
+  { note: 'C6',  freq: 1046.50, key: 'n', type: 'w', sol: 'Do' },
+];
+
+const KEY_MAP = {};
+KEY_DEFS.forEach(k => { KEY_MAP[k.key] = k; });
+
+const SONGS = {
+  twinkle: { title: 'Twinkle Twinkle Little Star', composer: 'Traditional', bpm: 120,
+    notes: 'C4 C4 G4 G4 A4 A4 G4~ F4 F4 E4 E4 D4 D4 C4~ G4 G4 F4 F4 E4 E4 D4~ G4 G4 F4 F4 E4 E4 D4~ C4 C4 G4 G4 A4 A4 G4~ F4 F4 E4 E4 D4 D4 C4~' },
+  ode: { title: 'Ode to Joy', composer: 'Beethoven', bpm: 120,
+    notes: 'E4 E4 F4 G4 G4 F4 E4 D4 C4 C4 D4 E4 E4~ D4 D4~ E4 E4 F4 G4 G4 F4 E4 D4 C4 C4 D4 E4 D4~ C4 C4~' },
+  elise: { title: 'Für Elise', composer: 'Beethoven', bpm: 140,
+    notes: 'E5 D#5 E5 D#5 E5 B4 D5 C5 A4~ C4 E4 A4 B4~ E4 G#4 B4 C5~ E5 D#5 E5 D#5 E5 B4 D5 C5 A4~ C4 E4 A4 B4~ E4 C5 B4 A4~' },
+  hungarian: { title: 'Hungarian Dance No.5', composer: 'Brahms', bpm: 140,
+    notes: 'G4 A4 G4 F#4 G4 A4 G4 F#4~ E4 F#4 G4 A4 B4 A4 G4 F#4~ G4 A4 G4 F#4 G4 A4 G4 F#4~ E4 F#4 G4 A4 B4 C5 B4 A4~ G4 B4 D5 B4 G4 B4 D5 B4~ C5 B4 A4 G4 F#4 E4 D4 C4~' },
+  moonlight: { title: 'Moonlight Sonata', composer: 'Beethoven', bpm: 60,
+    notes: 'C#4 E4 G#4 C#5 E4 G#4 C#5 E4 C#4 E4 G#4 C#5 E4 G#4 C#5 E4 B3 E4 G#4 B4 E4 G#4 B4 E4 A3 E4 G#4 A4 E4 G#4 A4 E4' },
+  clair: { title: 'Clair de Lune', composer: 'Debussy', bpm: 70,
+    notes: 'D4 F4 A4 D5 F4 A4 D5 F4 D4 F4 A4 D5 F4 A4 D5 F4 E4 G4 B4 D5 G4 B4 D5 G4 D4 F4 A4 D5 F4 A4 D5 F4' },
+  canon: { title: 'Canon in D', composer: 'Pachelbel', bpm: 100,
+    notes: 'F#5 E5 D5 C#5 B4 A4 B4 C#5 D5 C#5 B4 A4 G4 F#4 G4 E4 F#4 D5 D5 C#5 B4 A4 B4 C#5 D5 C#5 B4 A4 G4 F#4 E4 D4' },
+  river: { title: 'River Flows in You', composer: 'Yiruma', bpm: 90,
+    notes: 'A4 C5 E5 C5 A4 C5 E5 C5 A4 B4 D5 B4 G4 B4 D5 B4 F4 A4 C5 A4 F4 A4 C5 A4 G4 B4 D5 B4 E4 B4 D5 B4' },
+  nocturne: { title: 'Nocturne Op.9 No.2', composer: 'Chopin', bpm: 80,
+    notes: 'F4 A4 C5 A4 F4 A4 C5 A4 E4 G4 B4 G4 E4 G4 B4 G4 D4 F4 A4 F4 D4 F4 A4 F4 C4 E4 G4 E4 C4 E4 G4 E4' },
+  gymno: { title: 'Gymnopédie No.1', composer: 'Satie', bpm: 60,
+    notes: 'D4 F4 A4 D4 F4 A4 D4 F4 C4 E4 G4 C4 E4 G4 C4 E4 B3 D4 F4 B3 D4 F4 B3 D4 C4 E4 G4 C4 E4 G4 C4 E4' },
+  ave: { title: 'Ave Maria', composer: 'Schubert', bpm: 80,
+    notes: 'C4 E4 G4 C5 E4 G4 C5 E4 C4 E4 G4 C5 E4 G4 C5 E4 B3 D4 G4 B4 D4 G4 B4 D4 C4 E4 G4 C5 E4 G4 C5 E4' },
+  rhapsody: { title: 'Hungarian Rhapsody No.2', composer: 'Liszt', bpm: 120,
+    notes: 'C4 E4 G4 C5 E4 G4 C5 E4 C4 E4 G4 C5 E4 G4 C5 E4 D4 F4 A4 D5 F4 A4 D5 F4 C4 E4 G4 C5 G4 E4 C4 E4~' },
+};
+
+const LESSONS = [
+  { title: 'Meet the Piano', desc: 'Learn the basics', steps: [
+    { text: 'Welcome! Press the <span class="accent">A</span> key to play C (Do).', highlight: ['C4'], expect: ['C4'] },
+    { text: 'Now press <span class="accent">S</span> for D (Re).', highlight: ['D4'], expect: ['D4'] },
+    { text: 'Press <span class="accent">D</span> for E (Mi).', highlight: ['E4'], expect: ['E4'] },
+    { text: 'Try <span class="accent">F</span> for F (Fa).', highlight: ['F4'], expect: ['F4'] },
+    { text: 'Excellent! You\'ve learned the first four notes of the C major scale.', highlight: null, expect: null },
+  ]},
+  { title: 'C Major Scale', desc: 'Do Re Mi Fa Sol La Ti Do', steps: [
+    { text: 'Play the full C major scale: C D E F G A B C', highlight: ['C4','D4','E4','F4','G4','A4','B4','C5'], expect: ['C4','D4','E4','F4','G4','A4','B4','C5'] },
+  ]},
+  { title: 'Simple Chords', desc: 'C, F, and G major', steps: [
+    { text: 'Play C major chord: C (A), E (D), G (G) together or one by one.', highlight: ['C4','E4','G4'], expect: ['C4','E4','G4'] },
+    { text: 'Now F major: F (F), A (H), C5 (K).', highlight: ['F4','A4','C5'], expect: ['F4','A4','C5'] },
+    { text: 'And G major: G (G), B (J), D5 (L).', highlight: ['G4','B4','D5'], expect: ['G4','B4','D5'] },
+    { text: 'You\'ve learned three fundamental chords!', highlight: null, expect: null },
+  ]},
+  { title: 'Twinkle Twinkle', desc: 'Your first song', steps: [
+    { text: 'Play: C C G G A A G — Press A A G G H H G', highlight: ['C4','G4','A4'], expect: ['C4','C4','G4','G4','A4','A4','G4'] },
+    { text: 'Next: F F E E D D C — Press F F D D S S A', highlight: ['F4','E4','D4','C4'], expect: ['F4','F4','E4','E4','D4','D4','C4'] },
+    { text: 'Amazing! You can play Twinkle Twinkle Little Star!', highlight: null, expect: null },
+  ]},
+  { title: 'Black Keys', desc: 'Sharps and flats', steps: [
+    { text: 'Press <span class="accent">W</span> for C# (Do#) — the black key right after C.', highlight: ['C#4'], expect: ['C#4'] },
+    { text: 'Press <span class="accent">E</span> for D# (Re#).', highlight: ['D#4'], expect: ['D#4'] },
+    { text: 'Press <span class="accent">T</span> for F# (Fa#).', highlight: ['F#4'], expect: ['F#4'] },
+    { text: 'Black keys add color and emotion to music. Well done!', highlight: null, expect: null },
+  ]},
+];
+
+const EFFECTS = [
+  { id: 'none', name: 'None', icon: '⊘' },
+  { id: 'fireworks', name: 'Fireworks', icon: '✦' },
+  { id: 'hearts', name: 'Hearts', icon: '♥' },
+  { id: 'diamonds', name: 'Diamonds', icon: '◆' },
+  { id: 'shooting_stars', name: 'Stars', icon: '★' },
+  { id: 'bubbles', name: 'Bubbles', icon: '○' },
+  { id: 'sparks', name: 'Sparks', icon: '⚡' },
+  { id: 'snowflakes', name: 'Snow', icon: '❄' },
+  { id: 'lotus', name: 'Lotus', icon: '✾' },
+  { id: 'galaxy', name: 'Galaxy', icon: '◌' },
+  { id: 'beams', name: 'Beams', icon: '☼' },
+  { id: 'butterflies', name: 'Wings', icon: '✿' },
+  { id: 'petals', name: 'Petals', icon: '❀' },
+  { id: 'crystals', name: 'Crystals', icon: '◇' },
+  { id: 'constellation', name: 'Stars', icon: '✧' },
+  { id: 'random', name: 'Random', icon: '?' },
+];
+
+// ==================== STATE ====================
+const state = {
+  mode: 'freeplay',
+  currentEffect: 'fireworks',
+  volume: 0.6,
+  notesPlayed: 0,
+  sessionStart: Date.now(),
+  isRecording: false,
+  recording: [],
+  currentSong: null,
+  songPlaying: false,
+  songTimers: [],
+  songStartTime: 0,
+  songTotalDuration: 0,
+  gameSequence: [],
+  gameInputIndex: 0,
+  gameLevel: 0,
+  gamePlaying: false,
+  gameWatchPhase: false,
+  compositions: [],
+  currentLesson: null,
+  lessonStep: 0,
+  lessonExpectedNotes: [],
+  pressedKeys: new Set(),
+  reviewPlaying: false,
+};
+
+// ==================== AUDIO ENGINE ====================
+let audioCtx = null;
+let masterGain = null;
+
+function initAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = state.volume;
+    masterGain.connect(audioCtx.destination);
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+function playNote(freq, duration = 0.8) {
+  if (!audioCtx) return;
+  const now = audioCtx.currentTime;
+  const dur = Math.max(0.1, duration);
+  
+  const gain = audioCtx.createGain();
+  gain.gain.setValueAtTime(0, now);
+  gain.gain.linearRampToValueAtTime(0.3, now + 0.008);
+  gain.gain.exponentialRampToValueAtTime(0.12, now + 0.15);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+  
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.setValueAtTime(freq * 6, now);
+  filter.frequency.exponentialRampToValueAtTime(Math.max(100, freq * 2), now + dur);
+  filter.Q.value = 0.8;
+  
+  // Fundamental - triangle
+  const osc1 = audioCtx.createOscillator();
+  osc1.type = 'triangle';
+  osc1.frequency.value = freq;
+  const g1 = audioCtx.createGain();
+  g1.gain.value = 0.5;
+  osc1.connect(g1).connect(filter);
+  
+  // 2nd harmonic - sine
+  const osc2 = audioCtx.createOscillator();
+  osc2.type = 'sine';
+  osc2.frequency.value = freq * 2;
+  const g2 = audioCtx.createGain();
+  g2.gain.value = 0.2;
+  osc2.connect(g2).connect(filter);
+  
+  // 3rd harmonic - sine
+  const osc3 = audioCtx.createOscillator();
+  osc3.type = 'sine';
+  osc3.frequency.value = freq * 3;
+  const g3 = audioCtx.createGain();
+  g3.gain.value = 0.08;
+  osc3.connect(g3).connect(filter);
+  
+  filter.connect(gain).connect(masterGain);
+  
+  osc1.start(now); osc2.start(now); osc3.start(now);
+  osc1.stop(now + dur); osc2.stop(now + dur); osc3.stop(now + dur);
+}
+
+// ==================== GALAXY BACKGROUND ====================
+class GalaxyBg {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.stars = []; this.nebulae = []; this.particles = []; this.birds = []; this.shootingStars = []; this.leafShapes = [];
+    this.resize();
+    this.init();
+    this.animate();
+    window.addEventListener('resize', () => { this.resize(); this.init(); });
+  }
+  
+  resize() {
+    this.canvas.width = window.innerWidth;
+    this.canvas.height = window.innerHeight;
+  }
+  
+  init() {
+    this.stars = [];
+    for (let i = 0; i < 350; i++) {
+      this.stars.push({
+        x: Math.random() * this.canvas.width,
+        y: Math.random() * this.canvas.height,
+        size: Math.random() * 1.3 + 0.2,
+        opacity: Math.random() * 0.7 + 0.2,
+        speed: Math.random() * 0.015 + 0.003,
+        phase: Math.random() * Math.PI * 2,
+        color: Math.random() > 0.92 ? '#f4d27a' : (Math.random() > 0.75 ? '#7df0e0' : '#ffffff')
+      });
+    }
+    
+    this.nebulae = [];
+    const nebColors = ['rgba(94, 234, 212, 0.035)', 'rgba(244, 210, 122, 0.025)', 'rgba(196, 181, 253, 0.035)', 'rgba(249, 168, 212, 0.02)'];
+    for (let i = 0; i < 6; i++) {
+      this.nebulae.push({
+        x: Math.random() * this.canvas.width,
+        y: Math.random() * this.canvas.height * 0.75,
+        radius: Math.random() * 250 + 180,
+        color: nebColors[i % nebColors.length],
+        vx: (Math.random() - 0.5) * 0.08,
+        vy: (Math.random() - 0.5) * 0.04
+      });
+    }
+    
+    this.particles = [];
+    for (let i = 0; i < 40; i++) {
+      this.particles.push({
+        x: Math.random() * this.canvas.width,
+        y: Math.random() * this.canvas.height,
+        size: Math.random() * 1.8 + 0.4,
+        vx: (Math.random() - 0.5) * 0.25,
+        vy: -Math.random() * 0.25 - 0.05,
+        opacity: Math.random() * 0.35 + 0.1,
+        color: ['#f4d27a', '#5eead4', '#f9a8d4', '#c4b5fd'][Math.floor(Math.random() * 4)],
+        sway: Math.random() * Math.PI * 2,
+        swaySpeed: 0.01 + Math.random() * 0.02
+      });
+    }
+    
+    this.birds = [];
+    for (let i = 0; i < 5; i++) {
+      this.birds.push({
+        x: Math.random() * this.canvas.width,
+        y: Math.random() * this.canvas.height * 0.35 + 40,
+        vx: Math.random() * 0.4 + 0.25,
+        size: Math.random() * 2.5 + 2,
+        wing: Math.random() * Math.PI * 2,
+        wingSpeed: 0.08 + Math.random() * 0.04
+      });
+    }
+    
+    this.leafShapes = [];
+    for (let i = 0; i < 8; i++) {
+      this.leafShapes.push({
+        x: Math.random() * this.canvas.width,
+        y: Math.random() * this.canvas.height,
+        size: Math.random() * 4 + 3,
+        vx: (Math.random() - 0.5) * 0.4,
+        vy: -Math.random() * 0.2 - 0.1,
+        rot: Math.random() * Math.PI * 2,
+        rotSpeed: (Math.random() - 0.5) * 0.03,
+        sway: Math.random() * Math.PI * 2,
+        color: ['#f4d27a', '#b89a5a', '#5eead4'][Math.floor(Math.random() * 3)],
+        opacity: 0.15 + Math.random() * 0.15
+      });
+    }
+  }
+  
+  animate() {
+    const ctx = this.ctx;
+    const w = this.canvas.width, h = this.canvas.height;
+    
+    // Background gradient
+    const bg = ctx.createLinearGradient(0, 0, 0, h);
+    bg.addColorStop(0, '#030615');
+    bg.addColorStop(0.4, '#070d25');
+    bg.addColorStop(0.75, '#0a1230');
+    bg.addColorStop(1, '#050a1c');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, h);
+    
+    // Nebulae
+    this.nebulae.forEach(n => {
+      const grad = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, Math.max(1, n.radius));
+      grad.addColorStop(0, n.color);
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, n.radius, 0, Math.PI * 2);
+      ctx.fill();
+      n.x += n.vx; n.y += n.vy;
+      if (n.x < -n.radius) n.x = w + n.radius;
+      if (n.x > w + n.radius) n.x = -n.radius;
+      if (n.y < -n.radius) n.y = h + n.radius;
+      if (n.y > h + n.radius) n.y = -n.radius;
+    });
+    
+    // Stars
+    this.stars.forEach(s => {
+      s.phase += s.speed;
+      const op = s.opacity * (0.4 + Math.sin(s.phase) * 0.6);
+      ctx.globalAlpha = Math.max(0, op);
+      ctx.fillStyle = s.color;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+      ctx.fill();
+      if (s.size > 0.9) {
+        ctx.globalAlpha = op * 0.25;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.size * 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    });
+    ctx.globalAlpha = 1;
+    
+    // River at bottom
+    const riverH = 90;
+ const riverY = h - riverH;
+    const rg = ctx.createLinearGradient(0, riverY, 0, h);
+    rg.addColorStop(0, 'rgba(94, 234, 212, 0.01)');
+    rg.addColorStop(0.4, 'rgba(94, 234, 212, 0.06)');
+    rg.addColorStop(1, 'rgba(94, 234, 212, 0.14)');
+    ctx.fillStyle = rg;
+    ctx.fillRect(0, riverY, w, riverH);
+    
+    // River waves
+    const t = Date.now() * 0.001;
+    ctx.strokeStyle = 'rgba(94, 234, 212, 0.12)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 4; i++) {
+      ctx.beginPath();
+      for (let x = 0; x <= w; x += 6) {
+        const y = riverY + 8 + i * 18 + Math.sin(x * 0.015 + t * (1 + i * 0.3) + i) * 4;
+        if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+    
+    // Distant water drips
+    for (let i = 0; i < 3; i++) {
+      const dx = (w * 0.2 + i * w * 0.3 + Math.sin(t * 0.5 + i) * 30) % w;
+      const dy = riverY - 20 + Math.sin(t * 2 + i) * 5;
+      ctx.fillStyle = 'rgba(94, 234, 212, 0.2)';
+      ctx.beginPath();
+      ctx.arc(dx, dy, 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 0.1;
+      ctx.beginPath();
+      ctx.arc(dx, dy, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    
+    // Floating particles
+    this.particles.forEach(p => {
+      p.sway += p.swaySpeed;
+      p.x += p.vx + Math.sin(p.sway) * 0.2;
+      p.y += p.vy;
+      if (p.y < -10) { p.y = h + 10; p.x = Math.random() * w; }
+      if (p.x < 0) p.x = w; if (p.x > w) p.x = 0;
+      ctx.globalAlpha = p.opacity;
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+    
+    // Leaf shapes
+    this.leafShapes.forEach(l => {
+      l.sway += 0.02;
+      l.x += l.vx + Math.sin(l.sway) * 0.3;
+      l.y += l.vy;
+      l.rot += l.rotSpeed;
+      if (l.y < -20) { l.y = h + 20; l.x = Math.random() * w; }
+      if (l.x < -20) l.x = w + 20; if (l.x > w + 20) l.x = -20;
+      
+      ctx.save();
+      ctx.translate(l.x, l.y);
+      ctx.rotate(l.rot);
+      ctx.globalAlpha = l.opacity;
+      ctx.fillStyle = l.color;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, l.size, l.size * 0.4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    });
+    ctx.globalAlpha = 1;
+    
+    // Birds
+    this.birds.forEach(b => {
+      b.x += b.vx;
+      b.wing += b.wingSpeed;
+      if (b.x > w + 60) { b.x = -60; b.y = Math.random() * h * 0.35 + 40; }
+      const wy = Math.sin(b.wing) * b.size * 0.6;
+      ctx.strokeStyle = 'rgba(244, 210, 122, 0.35)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(b.x - b.size, b.y + wy);
+      ctx.quadraticCurveTo(b.x - b.size * 0.3, b.y - b.size * 0.3, b.x, b.y);
+      ctx.quadraticCurveTo(b.x + b.size * 0.3, b.y - b.size * 0.3, b.x + b.size, b.y + wy);
+      ctx.stroke();
+    });
+    
+    // Shooting stars
+    if (Math.random() < 0.003 && this.shootingStars.length < 2) {
+      this.shootingStars.push({
+        x: Math.random() * w * 0.7, y: Math.random() * h * 0.3,
+        vx: Math.random() * 4 + 3, vy: Math.random() * 1.5 + 0.8,
+        life: 1, trail: []
+      });
+    }
+    this.shootingStars = this.shootingStars.filter(s => {
+      s.trail.push({ x: s.x, y: s.y });
+      if (s.trail.length > 25) s.trail.shift();
+      s.x += s.vx; s.y += s.vy; s.life -= 0.008;
+      s.trail.forEach((t, i) => {
+        const a = (i / s.trail.length) * s.life * 0.7;
+        ctx.fillStyle = `rgba(255, 233, 168, ${a})`;
+        ctx.beginPath();
+        ctx.arc(t.x, t.y, (i / s.trail.length) * 1.8, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      return s.life > 0 && s.x < w + 100;
+    });
+    
+    requestAnimationFrame(() => this.animate());
+  }
+}
+
+// ==================== EFFECTS SYSTEM ====================
+class EffectSystem {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.particles = [];
+    this.resize();
+    window.addEventListener('resize', () => this.resize());
+    this.animate();
+  }
+  
+  resize() {
+    this.canvas.width = window.innerWidth;
+    this.canvas.height = window.innerHeight;
+  }
+  
+  spawn(x, y, effect = null) {
+    const e = effect || state.currentEffect;
+    if (e === 'none') return;
+    if (e === 'random') {
+      const all = ['fireworks','hearts','diamonds','shooting_stars','bubbles','sparks','snowflakes','lotus','galaxy','beams','butterflies','petals','crystals','constellation'];
+      this.spawn(x, y, all[Math.floor(Math.random() * all.length)]);
+      return;
+    }
+    const fn = this['spawn_' + e];
+    if (fn) fn.call(this, x, y);
+  }
+  
+  // --- Spawn methods ---
+  spawn_fireworks(x, y) {
+    const colors = ['#f4d27a','#5eead4','#f9a8d4','#ffe9a8','#c4b5fd','#ff80b5'];
+    const count = 28;
+    for (let i = 0; i < count; i++) {
+      const a = (Math.PI * 2 * i) / count + Math.random() * 0.3;
+      const sp = Math.random() * 4 + 2;
+      this.particles.push({ type:'fw', x, y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp-1, g:0.08, size:Math.random()*2.5+1, color:colors[i%colors.length], life:1, decay:0.014+Math.random()*0.008, trail:[] });
+    }
+  }
+  
+  spawn_hearts(x, y) {
+    const colors = ['#f9a8d4','#ff6b9d','#ffb3d1','#ff4d8d'];
+    for (let i = 0; i < 7; i++) {
+      this.particles.push({ type:'heart', x:x+(Math.random()-0.5)*25, y:y+(Math.random()-0.5)*15, vx:(Math.random()-0.5)*2, vy:-Math.random()*2-1, g:-0.02, size:Math.random()*7+5, color:colors[i%colors.length], life:1, decay:0.007, rot:Math.random()*Math.PI*2, rs:(Math.random()-0.5)*0.04 });
+    }
+  }
+  
+  spawn_diamonds(x, y) {
+    const colors = ['#5eead4','#7df0e0','#a0f4e8','#3dd6c4','#b8f4e8'];
+    for (let i = 0; i < 10; i++) {
+      const a = Math.random()*Math.PI*2; const sp = Math.random()*3+1.5;
+      this.particles.push({ type:'diamond', x, y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp-1, g:0.05, size:Math.random()*5+4, color:colors[i%colors.length], life:1, decay:0.011, rot:Math.random()*Math.PI*2, rs:(Math.random()-0.5)*0.12 });
+    }
+  }
+  
+  spawn_shooting_stars(x, y) {
+    const colors = ['#ffe9a8','#f4d27a','#fff5d6','#7df0e0'];
+    for (let i = 0; i < 5; i++) {
+      const a = -Math.PI/4 + (Math.random()-0.5)*Math.PI*1.2;
+      const sp = Math.random()*5+4;
+      this.particles.push({ type:'shoot', x, y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp, size:Math.random()*2.5+1.5, color:colors[i%colors.length], life:1, decay:0.018, trail:[] });
+    }
+  }
+  
+  spawn_bubbles(x, y) {
+    const colors = ['rgba(94,234,212,0.6)','rgba(244,210,122,0.5)','rgba(196,181,253,0.5)','rgba(249,168,212,0.5)'];
+    for (let i = 0; i < 9; i++) {
+      this.particles.push({ type:'bubble', x:x+(Math.random()-0.5)*35, y:y+(Math.random()-0.5)*15, vx:(Math.random()-0.5)*1, vy:-Math.random()*1.5-0.5, g:-0.01, size:Math.random()*7+4, color:colors[i%colors.length], life:1, decay:0.006, wobble:Math.random()*Math.PI*2, ws:0.05 });
+    }
+  }
+  
+  spawn_sparks(x, y) {
+    const colors = ['#ffe9a8','#f4d27a','#ff6b35','#fff5d6','#ffaa44'];
+    for (let i = 0; i < 18; i++) {
+      const a = Math.random()*Math.PI*2; const sp = Math.random()*5+2;
+      this.particles.push({ type:'spark', x, y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp, g:0.12, size:Math.random()*2+0.5, color:colors[i%colors.length], life:1, decay:0.028 });
+    }
+  }
+  
+  spawn_snowflakes(x, y) {
+    const colors = ['#ffffff','#e0f4ff','#b8e0ff','#d0eaff'];
+    for (let i = 0; i < 7; i++) {
+      this.particles.push({ type:'snow', x:x+(Math.random()-0.5)*25, y:y+(Math.random()-0.5)*15, vx:(Math.random()-0.5)*0.7, vy:-Math.random()*0.4-0.15, g:0.012, size:Math.random()*7+5, color:colors[i%colors.length], life:1, decay:0.005, rot:Math.random()*Math.PI*2, rs:(Math.random()-0.5)*0.025 });
+    }
+  }
+  
+  spawn_lotus(x, y) {
+    const colors = ['#f9a8d4','#ffb3d1','#ff80b5','#ffd9e8','#c4b5fd'];
+    for (let i = 0; i < 8; i++) {
+      const a = (Math.PI*2*i)/8;
+      this.particles.push({ type:'lotus', x, y, vx:Math.cos(a)*1.5, vy:Math.sin(a)*1.5-0.5, g:0.02, size:Math.random()*9+7, color:colors[i%colors.length], life:1, decay:0.009, rot:a+Math.PI/2, rs:0.015 });
+    }
+    // Center glow
+    this.particles.push({ type:'glow', x, y, size:30, color:'#ffe9a8', life:1, decay:0.03 });
+  }
+  
+  spawn_galaxy(x, y) {
+    const colors = ['#c4b5fd','#a78bfa','#f4d27a','#5eead4','#f9a8d4'];
+    for (let i = 0; i < 22; i++) {
+      const a = (Math.PI*5*i)/22;
+      const r = (i/22)*35;
+      this.particles.push({ type:'galaxy', x:x+Math.cos(a)*r, y:y+Math.sin(a)*r, vx:Math.cos(a)*2.5, vy:Math.sin(a)*2.5-0.5, g:0, size:Math.random()*2.5+1, color:colors[i%colors.length], life:1, decay:0.011, angle:a, radius:r, ss:0.04 });
+    }
+  }
+  
+  spawn_beams(x, y) {
+    const colors = ['#ffe9a8','#f4d27a','#fff5d6','#5eead4'];
+    for (let i = 0; i < 7; i++) {
+      const a = (Math.PI*2*i)/7;
+      this.particles.push({ type:'beam', x, y, angle:a, length:0, maxLength:Math.random()*80+50, width:Math.random()*4+2, color:colors[i%colors.length], life:1, decay:0.022 });
+    }
+  }
+  
+  spawn_butterflies(x, y) {
+    const pairs = [['#f4d27a','#ffe9a8'],['#5eead4','#7df0e0'],['#f9a8d4','#ffb3d1'],['#c4b5fd','#d4c5fe']];
+    for (let i = 0; i < 4; i++) {
+      const c = pairs[Math.floor(Math.random()*pairs.length)];
+      this.particles.push({ type:'butterfly', x:x+(Math.random()-0.5)*25, y:y+(Math.random()-0.5)*15, vx:(Math.random()-0.5)*1.5, vy:-Math.random()*1-0.4, g:-0.008, size:Math.random()*5+7, c1:c[0], c2:c[1], life:1, decay:0.006, wp:Math.random()*Math.PI*2, ws:0.16 });
+    }
+  }
+  
+  spawn_petals(x, y) {
+    const colors = ['#f9a8d4','#ffb3d1','#ffd9e8','#ff80b5','#ff6b9d','#c4b5fd'];
+    for (let i = 0; i < 9; i++) {
+      const a = Math.random()*Math.PI*2; const sp = Math.random()*2+0.5;
+      this.particles.push({ type:'petal', x, y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp-1, g:0.03, size:Math.random()*4+3, color:colors[i%colors.length], life:1, decay:0.007, rot:Math.random()*Math.PI*2, rs:(Math.random()-0.5)*0.07, sway:Math.random()*Math.PI*2, ss:0.04 });
+    }
+  }
+  
+  spawn_crystals(x, y) {
+    const colors = ['#5eead4','#7df0e0','#a0f4e8','#3dd6c4','#b8f4e8','#e0fbf7'];
+    for (let i = 0; i < 11; i++) {
+      const a = Math.random()*Math.PI*2; const sp = Math.random()*4+1.5;
+      this.particles.push({ type:'crystal', x, y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp-1, g:0.06, size:Math.random()*4+3, color:colors[i%colors.length], life:1, decay:0.013, rot:Math.random()*Math.PI*2, rs:(Math.random()-0.5)*0.18 });
+    }
+  }
+  
+  spawn_constellation(x, y) {
+    const colors = ['#ffe9a8','#f4d27a','#fff5d6','#7df0e0'];
+    const points = [];
+    const count = 6;
+    for (let i = 0; i < count; i++) {
+      const a = (Math.PI*2*i)/count + Math.random()*0.5;
+      const d = Math.random()*45+20;
+      points.push({ x:x+Math.cos(a)*d, y:y+Math.sin(a)*d, size:Math.random()*2.5+1.5, color:colors[i%colors.length] });
+    }
+    const connections = [];
+    points.forEach((p, i) => {
+      const dists = points.map((q,j)=>({idx:j,d:Math.hypot(p.x-q.x,p.y-q.y)})).filter(d=>d.idx!==i).sort((a,b)=>a.d-b.d);
+      connections.push([i, dists[0].idx]);
+      if (dists[1]) connections.push([i, dists[1].idx]);
+    });
+    this.particles.push({ type:'constellation', x, y, points, connections, life:1, decay:0.007 });
+  }
+  
+  // --- Draw methods ---
+  drawParticle(p) {
+    const ctx = this.ctx;
+    ctx.globalAlpha = Math.max(0, p.life);
+    
+    switch (p.type) {
+      case 'fw':
+        p.trail.forEach((t, i) => {
+          ctx.globalAlpha = (i / p.trail.length) * p.life * 0.4;
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(t.x, t.y, Math.max(0.1, p.size * (i / p.trail.length)), 0, Math.PI*2);
+          ctx.fill();
+        });
+        ctx.globalAlpha = p.life;
+        ctx.fillStyle = p.color;
+        ctx.shadowBlur = 10; ctx.shadowColor = p.color;
+        ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(0.1, p.size), 0, Math.PI*2); ctx.fill();
+        ctx.shadowBlur = 0;
+        break;
+        
+      case 'heart':
+        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+        ctx.fillStyle = p.color; ctx.shadowBlur = 8; ctx.shadowColor = p.color;
+        const s = p.size;
+        ctx.beginPath();
+        ctx.moveTo(0, s*0.35);
+        ctx.bezierCurveTo(-s*1.1, -s*0.5, -s*0.5, -s*1.1, 0, -s*0.35);
+        ctx.bezierCurveTo(s*0.5, -s*1.1, s*1.1, -s*0.5, 0, s*0.35);
+        ctx.fill();
+        ctx.restore(); ctx.shadowBlur = 0;
+        break;
+        
+      case 'diamond':
+        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+        ctx.fillStyle = p.color; ctx.shadowBlur = 8; ctx.shadowColor = p.color;
+        const d = p.size;
+        ctx.beginPath();
+        ctx.moveTo(0, -d); ctx.lineTo(d*0.65, 0); ctx.lineTo(0, d); ctx.lineTo(-d*0.65, 0);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.45)';
+        ctx.beginPath();
+        ctx.moveTo(0, -d*0.7); ctx.lineTo(d*0.25, -d*0.1); ctx.lineTo(0, 0); ctx.lineTo(-d*0.25, -d*0.1);
+        ctx.closePath(); ctx.fill();
+        ctx.restore(); ctx.shadowBlur = 0;
+        break;
+        
+      case 'shoot':
+        p.trail.forEach((t, i) => {
+          ctx.globalAlpha = (i / p.trail.length) * p.life * 0.6;
+          ctx.fillStyle = p.color;
+          ctx.beginPath(); ctx.arc(t.x, t.y, Math.max(0.1, p.size * (i / p.trail.length)), 0, Math.PI*2); ctx.fill();
+        });
+        ctx.globalAlpha = p.life;
+        ctx.fillStyle = p.color; ctx.shadowBlur = 12; ctx.shadowColor = p.color;
+        ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(0.1, p.size), 0, Math.PI*2); ctx.fill();
+        ctx.shadowBlur = 0;
+        break;
+        
+      case 'bubble':
+        ctx.strokeStyle = p.color; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(0.5, p.size), 0, Math.PI*2); ctx.stroke();
+        ctx.fillStyle = p.color.replace(/[\d.]+\)$/, '0.15)');
+        ctx.fill();
+        // Highlight
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.beginPath(); ctx.arc(p.x - p.size*0.3, p.y - p.size*0.3, Math.max(0.3, p.size*0.25), 0, Math.PI*2); ctx.fill();
+        break;
+        
+      case 'spark':
+        ctx.fillStyle = p.color; ctx.shadowBlur = 6; ctx.shadowColor = p.color;
+        ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(0.1, p.size), 0, Math.PI*2); ctx.fill();
+        ctx.shadowBlur = 0;
+        break;
+        
+      case 'snow':
+        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+        ctx.strokeStyle = p.color; ctx.fillStyle = p.color;
+        ctx.lineWidth = 1.2; ctx.shadowBlur = 4; ctx.shadowColor = p.color;
+        const sn = p.size;
+        for (let i = 0; i < 6; i++) {
+          ctx.save(); ctx.rotate((Math.PI*2*i)/6);
+          ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -sn); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(0, -sn*0.5); ctx.lineTo(sn*0.3, -sn*0.7); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(0, -sn*0.5); ctx.lineTo(-sn*0.3, -sn*0.7); ctx.stroke();
+          ctx.restore();
+        }
+        ctx.beginPath(); ctx.arc(0, 0, Math.max(0.5, sn*0.15), 0, Math.PI*2); ctx.fill();
+        ctx.restore(); ctx.shadowBlur = 0;
+        break;
+        
+      case 'lotus':
+        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+        ctx.fillStyle = p.color; ctx.shadowBlur = 6; ctx.shadowColor = p.color;
+        const lp = p.size;
+        ctx.beginPath();
+        ctx.ellipse(0, -lp*0.5, lp*0.35, lp*0.6, 0, 0, Math.PI*2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        ctx.beginPath();
+        ctx.ellipse(0, -lp*0.5, lp*0.15, lp*0.3, 0, 0, Math.PI*2);
+        ctx.fill();
+        ctx.restore(); ctx.shadowBlur = 0;
+        break;
+        
+      case 'glow':
+        const gg = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, Math.max(1, p.size));
+        gg.addColorStop(0, p.color);
+        gg.addColorStop(1, 'rgba(255,233,168,0)');
+        ctx.fillStyle = gg;
+        ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(1, p.size), 0, Math.PI*2); ctx.fill();
+        break;
+        
+      case 'galaxy':
+        p.angle += p.ss;
+        p.radius += 0.3;
+        p.x = p.x + Math.cos(p.angle) * 0.5;
+        p.y = p.y + Math.sin(p.angle) * 0.5;
+        ctx.fillStyle = p.color; ctx.shadowBlur = 8; ctx.shadowColor = p.color;
+        ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(0.1, p.size), 0, Math.PI*2); ctx.fill();
+        ctx.shadowBlur = 0;
+        break;
+        
+      case 'beam':
+        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.angle);
+        const bg = ctx.createLinearGradient(0, 0, p.length, 0);
+        bg.addColorStop(0, p.color);
+        bg.addColorStop(1, 'rgba(255,233,168,0)');
+        ctx.fillStyle = bg;
+        ctx.shadowBlur = 8; ctx.shadowColor = p.color;
+        ctx.beginPath();
+        ctx.moveTo(0, -p.width/2);
+        ctx.lineTo(p.length, -p.width*0.1);
+        ctx.lineTo(p.length, p.width*0.1);
+        ctx.lineTo(0, p.width/2);
+        ctx.closePath(); ctx.fill();
+        ctx.restore(); ctx.shadowBlur = 0;
+        break;
+        
+      case 'butterfly':
+        ctx.save(); ctx.translate(p.x, p.y);
+        const wingY = Math.sin(p.wp) * p.size * 0.3;
+        const wingScale = 0.7 + Math.abs(Math.sin(p.wp)) * 0.3;
+        ctx.fillStyle = p.c1; ctx.shadowBlur = 5; ctx.shadowColor = p.c1;
+        // Left wing
+        ctx.save(); ctx.scale(wingScale, 1);
+        ctx.beginPath();
+        ctx.ellipse(-p.size*0.5, -p.size*0.2+wingY*0.3, p.size*0.5, p.size*0.35, -0.3, 0, Math.PI*2);
+        ctx.fill();
+        ctx.fillStyle = p.c2;
+        ctx.beginPath();
+        ctx.ellipse(-p.size*0.4, p.size*0.25+wingY*0.3, p.size*0.35, p.size*0.25, 0.3, 0, Math.PI*2);
+        ctx.fill();
+        ctx.restore();
+        // Right wing
+        ctx.save(); ctx.scale(wingScale, 1);
+        ctx.fillStyle = p.c1;
+        ctx.beginPath();
+        ctx.ellipse(p.size*0.5, -p.size*0.2+wingY*0.3, p.size*0.5, p.size*0.35, 0.3, 0, Math.PI*2);
+        ctx.fill();
+        ctx.fillStyle = p.c2;
+        ctx.beginPath();
+        ctx.ellipse(p.size*0.4, p.size*0.25+wingY*0.3, p.size*0.35, p.size*0.25, -0.3, 0, Math.PI*2);
+        ctx.fill();
+        ctx.restore();
+        // Body
+        ctx.fillStyle = '#1a0f0a';
+        ctx.beginPath(); ctx.ellipse(0, 0, p.size*0.08, p.size*0.4, 0, 0, Math.PI*2); ctx.fill();
+        ctx.restore(); ctx.shadowBlur = 0;
+        break;
+        
+      case 'petal':
+        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+        ctx.fillStyle = p.color; ctx.shadowBlur = 4; ctx.shadowColor = p.color;
+        const ps = p.size;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, ps*0.5, ps, 0, 0, Math.PI*2);
+        ctx.fill();
+        ctx.restore(); ctx.shadowBlur = 0;
+        break;
+        
+      case 'crystal':
+        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+        ctx.fillStyle = p.color; ctx.shadowBlur = 6; ctx.shadowColor = p.color;
+        const cs = p.size;
+        ctx.beginPath();
+        ctx.moveTo(0, -cs); ctx.lineTo(cs*0.4, -cs*0.2); ctx.lineTo(cs*0.5, cs*0.3);
+        ctx.lineTo(0, cs); ctx.lineTo(-cs*0.5, cs*0.3); ctx.lineTo(-cs*0.4, -cs*0.2);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.35)';
+        ctx.beginPath();
+        ctx.moveTo(0, -cs*0.8); ctx.lineTo(cs*0.15, -cs*0.2); ctx.lineTo(0, 0); ctx.lineTo(-cs*0.15, -cs*0.2);
+        ctx.closePath(); ctx.fill();
+        ctx.restore(); ctx.shadowBlur = 0;
+        break;
+        
+      case 'constellation':
+        // Draw connections
+        ctx.strokeStyle = `rgba(244, 210, 122, ${p.life * 0.3})`;
+        ctx.lineWidth = 0.8;
+        p.connections.forEach(([a, b]) => {
+          ctx.beginPath();
+          ctx.moveTo(p.points[a].x, p.points[a].y);
+          ctx.lineTo(p.points[b].x, p.points[b].y);
+          ctx.stroke();
+        });
+        // Draw star points
+        p.points.forEach(pt => {
+          ctx.fillStyle = pt.color;
+          ctx.shadowBlur = 8; ctx.shadowColor = pt.color;
+          ctx.beginPath(); ctx.arc(pt.x, pt.y, Math.max(0.3, pt.size), 0, Math.PI*2); ctx.fill();
+          // Cross sparkle
+          ctx.strokeStyle = pt.color;
+          ctx.lineWidth = 0.5;
+          ctx.globalAlpha = p.life * 0.5;
+          ctx.beginPath();
+          ctx.moveTo(pt.x - pt.size*3, pt.y); ctx.lineTo(pt.x + pt.size*3, pt.y);
+          ctx.moveTo(pt.x, pt.y - pt.size*3); ctx.lineTo(pt.x, pt.y + pt.size*3);
+          ctx.stroke();
+          ctx.globalAlpha = p.life;
+        });
+        ctx.shadowBlur = 0;
+        break;
+    }
+    ctx.globalAlpha = 1;
+  }
+  
+  updateParticle(p) {
+    switch (p.type) {
+      case 'fw': case 'spark': case 'crystal': case 'petal':
+        p.trail = p.trail || [];
+        if (p.type === 'fw') {
+          p.trail.push({x:p.x, y:p.y});
+          if (p.trail.length > 8) p.trail.shift();
+        }
+        p.x += p.vx; p.y += p.vy; p.vy += p.g; p.vx *= 0.98;
+        if (p.rot !== undefined) p.rot += p.rs;
+        break;
+      case 'heart':
+        p.x += p.vx; p.y += p.vy; p.vy += p.g; p.rot += p.rs;
+        break;
+      case 'diamond':
+        p.x += p.vx; p.y += p.vy; p.vy += p.g; p.rot += p.rs;
+        break;
+      case 'shoot':
+        p.trail.push({x:p.x, y:p.y});
+        if (p.trail.length > 18) p.trail.shift();
+        p.x += p.vx; p.y += p.vy;
+        break;
+      case 'bubble':
+        p.wobble += p.ws;
+        p.x += p.vx + Math.sin(p.wobble) * 0.3;
+        p.y += p.vy; p.vy += p.g;
+        break;
+      case 'snow':
+        p.x += p.vx + Math.sin(p.rot) * 0.2;
+        p.y += p.vy; p.vy += p.g; p.rot += p.rs;
+        break;
+      case 'lotus':
+        p.x += p.vx; p.y += p.vy; p.vy += p.g; p.rot += p.rs;
+        break;
+      case 'galaxy':
+        p.angle += p.ss;
+        p.x += Math.cos(p.angle) * 0.8;
+        p.y += Math.sin(p.angle) * 0.8 - 0.3;
+        break;
+      case 'beam':
+        p.length = Math.min(p.maxLength, p.length + 6);
+        break;
+      case 'butterfly':
+        p.wp += p.ws;
+        p.x += p.vx + Math.sin(p.wp*0.5) * 0.5;
+        p.y += p.vy; p.vy += p.g;
+        break;
+      case 'constellation':
+        // Static, just fades
+        break;
+    }
+    p.life -= p.decay;
+  }
+  
+  animate() {
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.particles = this.particles.filter(p => {
+      this.updateParticle(p);
+      if (p.life > 0) { this.drawParticle(p); return true; }
+      return false;
+    });
+    requestAnimationFrame(() => this.animate());
+  }
+}
+
+// ==================== PIANO BUILDING ====================
+function buildPiano() {
+  const container = document.getElementById('piano-keys');
+  const whiteKeys = KEY_DEFS.filter(k => k.type === 'w');
+  const totalWhite = whiteKeys.length;
+  
+  // White keys
+  whiteKeys.forEach(kd => {
+    const el = document.createElement('div');
+    el.className = 'white-key';
+    el.dataset.note = kd.note;
+    el.dataset.key = kd.key;
+    el.innerHTML = `
+      <span class="key-star">✦</span>
+      <span class="key-label">${kd.key.toUpperCase()}</span>
+      <span class="key-note">${kd.sol}</span>
+    `;
+    el.addEventListener('mousedown', (e) => { e.preventDefault(); triggerKey(kd); });
+    el.addEventListener('touchstart', (e) => { e.preventDefault(); triggerKey(kd); }, { passive: false });
+    container.appendChild(el);
+  });
+  
+  // Black keys
+  const blackKeys = KEY_DEFS.filter(k => k.type === 'b');
+  blackKeys.forEach(kd => {
+    const el = document.createElement('div');
+    el.className = 'black-key';
+    el.dataset.note = kd.note;
+    el.dataset.key = kd.key;
+    // Position: each white key is 100/totalWhite % wide. Black key at position N is at N * (100/totalWhite) - halfBlackWidth
+    const whiteWidth = 100 / totalWhite;
+    const blackWidth = 4.2; // matches CSS
+    el.style.left = `calc(${kd.pos * whiteWidth}% - ${blackWidth / 2}%)`;
+    el.style.width = `${blackWidth}%`;
+    el.innerHTML = `
+      <span class="key-star">✦</span>
+      <span class="key-label">${kd.key.toUpperCase()}</span>
+    `;
+    el.addEventListener('mousedown', (e) => { e.preventDefault(); triggerKey(kd); });
+    el.addEventListener('touchstart', (e) => { e.preventDefault(); triggerKey(kd); }, { passive: false });
+    container.appendChild(el);
+  });
+}
+
+function getKeyElement(note) {
+  return document.querySelector(`[data-note="${note}"]`);
+}
+
+// ==================== KEY TRIGGER ====================
+function triggerKey(kd, opts = {}) {
+  if (!kd) return;
+  initAudio();
+  
+  const el = getKeyElement(kd.note);
+  if (!el) return;
+  
+  // Visual press
+  el.classList.add('active');
+  setTimeout(() => el.classList.remove('active'), opts.duration ? opts.duration * 1000 : 200);
+  
+  // Audio
+  const dur = opts.duration || 0.8;
+  playNote(kd.freq, dur);
+  
+  // Effect
+  if (!opts.noEffect) {
+    const rect = el.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top;
+    effects.spawn(x, y);
+  }
+  
+  // Glow
+  const glow = document.getElementById('piano-glow');
+  glow.classList.add('active');
+  clearTimeout(glow._timer);
+  glow._timer = setTimeout(() => glow.classList.remove('active'), 300);
+  
+  // Stats
+  if (!opts.noCount) {
+    state.notesPlayed++;
+    document.getElementById('stat-notes').textContent = state.notesPlayed;
+  }
+  
+  // Recording
+  if (state.isRecording && !opts.noRecord) {
+    state.recording.push({ note: kd.note, freq: kd.freq, time: Date.now() - state.recordingStartTime });
+  }
+  
+  // Mode-specific handling
+  if (state.mode === 'learn' && state.currentSong && !opts.songPlayback) {
+    handleLearnKeyPress(kd.note);
+  }
+  
+  if (state.mode === 'memory' && state.gamePlaying && !state.gameWatchPhase) {
+    handleMemoryInput(kd.note);
+  }
+  
+  if (state.mode === 'lessons' && state.currentLesson !== null) {
+    handleLessonKeyPress(kd.note);
+  }
+  
+  // Update now playing
+  if (!opts.songPlayback) {
+    document.getElementById('np-status').textContent = `Playing: ${kd.note} · ${kd.sol || kd.note}`;
+  }
+}
+
+// ==================== KEYBOARD EVENTS ====================
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.repeat) return;
+  const key = e.key.toLowerCase();
+  if (KEY_MAP[key]) {
+    e.preventDefault();
+    if (state.pressedKeys.has(key)) return;
+    state.pressedKeys.add(key);
+    triggerKey(KEY_MAP[key]);
+  }
+});
+
+document.addEventListener('keyup', (e) => {
+  state.pressedKeys.delete(e.key.toLowerCase());
+});
+
+// ==================== MODE SWITCHING ====================
+function switchMode(mode) {
+  state.mode = mode;
+  document.querySelectorAll('.mode-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
+  document.querySelectorAll('.mode-content').forEach(c => c.classList.toggle('active', c.dataset.mode === mode));
+  
+  // Stop any playing song
+  stopSong();
+  
+  // Reset game
+  if (mode !== 'memory') resetGame();
+  
+  // Show/hide review button
+  const reviewBtn = document.getElementById('review-btn');
+  reviewBtn.style.display = (mode === 'freeplay' || mode === 'compose') ? 'grid' : 'none';
+  
+  // Update now playing
+  const npTitle = document.getElementById('np-title');
+  const npStatus = document.getElementById('np-status');
+  const npControls = document.getElementById('np-controls');
+  
+  if (mode === 'freeplay') {
+    npTitle.textContent = 'Free Play';
+    npStatus.textContent = 'Play freely · A = Do (C)';
+    npControls.innerHTML = '';
+  } else if (mode === 'learn') {
+    npTitle.textContent = 'Learn Songs';
+    npStatus.textContent = 'Select a song to begin';
+    npControls.innerHTML = '';
+  } else if (mode === 'memory') {
+    npTitle.textContent = 'Memory Game';
+    npStatus.textContent = 'Press Start to begin';
+    npControls.innerHTML = '';
+  } else if (mode === 'compose') {
+    npTitle.textContent = 'Compose';
+    npStatus.textContent = 'Recording automatically · Play freely';
+    npControls.innerHTML = '';
+    startRecording();
+  } else if (mode === 'lessons') {
+    npTitle.textContent = 'Online Lessons';
+    npStatus.textContent = 'Select a lesson to begin';
+    npControls.innerHTML = '';
+  }
+  
+  clearHighlights();
+}
+
+document.querySelectorAll('.mode-tab').forEach(tab => {
+  tab.addEventListener('click', () => switchMode(tab.dataset.mode));
+});
+
+// ==================== SONG LIST ====================
+function buildSongList() {
+  const list = document.getElementById('song-list');
+  Object.entries(SONGS).forEach(([id, song]) => {
+    const item = document.createElement('div');
+    item.className = 'song-item';
+    item.dataset.song = id;
+    item.innerHTML `<div class="song-title">${song.title}</div><div class="song-composer">${song.composer}</div>`;
+    item.addEventListener('click', () => selectSong(id));
+    list.appendChild(item);
+  });
+}
+
+function parseSongNotes(notesStr, bpm) {
+  const beat = 60 / bpm;
+  return notesStr.trim().split(/\s+/).map(token => {
+    const held = token.endsWith('~');
+    const note = held ? token.slice(0, -1) : token;
+    return { note, duration: (held ? 2 : 1) * beat };
+  });
+}
+
+function selectSong(id) {
+  state.currentSong = id;
+  document.querySelectorAll('.song-item').forEach(s => s.classList.toggle('active', s.dataset.song === id));
+  
+  const song = SONGS[id];
+  document.getElementById('np-title').textContent = song.title;
+  document.getElementById('np-status').textContent = `${song.composer} · Ready to play`;
+  
+  // Show controls
+  const controls = document.getElementById('np-controls');
+  controls.innerHTML = `
+    <button class="icon-btn primary" id="song-play-btn" title="Play">▶</button>
+    <button class="icon-btn" id="song-stop-btn" title="Stop">■</button>
+    <div class="progress-bar"><div class="progress-fill" id="song-progress"></div></div>
+  `;
+  document.getElementById('song-play-btn').addEventListener('click', playSong);
+  document.getElementById('song-stop-btn').addEventListener('click', stopSong);
+}
+
+function playSong() {
+  if (!state.currentSong) return;
+  stopSong();
+  
+  const song = SONGS[state.currentSong];
+  const speed = parseFloat(document.getElementById('song-speed').value) || 1;
+  const notes = parseSongNotes(song.notes, song.bpm * speed);
+  
+  state.songPlaying = true;
+  state.songStartTime = Date.now();
+  state.songTotalDuration = notes.reduce((s, n) => s + n.duration, 0);
+  
+  document.getElementById('np-status').textContent = `Playing...`;
+  
+  let offset = 0;
+  notes.forEach((n, i) => {
+    const timer = setTimeout(() => {
+      if (!state.songPlaying) return;
+      const kd = KEY_DEFS.find(k => k.note === n.note);
+      if (kd) {
+        // Highlight key
+        const el = getKeyElement(n.note);
+        if (el) {
+          el.classList.add('highlight');
+          setTimeout(() => el.classList.remove('highlight'), n.duration * 1000 * 0.8);
+        }
+        triggerKey(kd, { duration: n.duration, songPlayback: true, noCount: true });
+      }
+    }, offset * 1000);
+    state.songTimers.push(timer);
+    offset += n.duration;
+  });
+  
+  // Progress bar
+  const progressTimer = setInterval(() => {
+    if (!state.songPlaying) { clearInterval(progressTimer); return; }
+    const elapsed = (Date.now() - state.songStartTime) / 1000;
+    const pct = Math.min(100, (elapsed / state.songTotalDuration) * 100);
+    const fill = document.getElementById('song-progress');
+    if (fill) fill.style.width = pct + '%';
+  }, 100);
+  state.songTimers.push(progressTimer);
+  
+  // End
+  const endTimer = setTimeout(() => {
+    state.songPlaying = false;
+    document.getElementById('np-status').textContent = `${song.composer} · Complete!`;
+    const fill = document.getElementById('song-progress');
+    if (fill) fill.style.width = '100%';
+  }, offset * 1000 + 500);
+  state.songTimers.push(endTimer);
+}
+
+function stopSong() {
+  state.songPlaying = false;
+  state.songTimers.forEach(t => { clearTimeout(t); clearInterval(t); });
+  state.songTimers = [];
+  clearHighlights();
+  const fill = document.getElementById('song-progress');
+  if (fill) fill.style.width = '0%';
+}
+
+function clearHighlights() {
+  document.querySelectorAll('.highlight').forEach(el => el.classList.remove('highlight'));
+}
+
+// Handle learn mode key press
+function handleLearnKeyPress(note) {
+  // In learn mode, any key press during song playback is just free play
+  // Could add "follow along" mode here
+}
+
+// ==================== MEMORY GAME ====================
+const GAME_NOTES = ['C4','D4','E4','F4','G4','A4','B4','C5'];
+
+function startGame() {
+  state.gameSequence = [];
+  state.gameLevel = 0;
+  state.gamePlaying = true;
+  document.getElementById('game-start-btn').textContent = 'Restart';
+  nextRound();
+}
+
+function nextRound() {
+  state.gameLevel++;
+  state.gameSequence.push(GAME_NOTES[Math.floor(Math.random() * GAME_NOTES.length)]);
+  state.gameInputIndex = 0;
+  document.getElementById('game-score').textContent = state.gameLevel;
+  
+  const status = document.getElementById('game-status');
+  status.className = 'game-status watch';
+  status.textContent = 'Watch...';
+  state.gameWatchPhase = true;
+  
+  // Play sequence
+  let delay = 600;
+  state.gameSequence.forEach((note, i) => {
+    const timer = setTimeout(() => {
+      const kd = KEY_DEFS.find(k => k.note === note);
+      if (kd) {
+        const el = getKeyElement(note);
+        if (el) {
+          el.classList.add('highlight');
+          setTimeout(() => el.classList.remove('highlight'), 300);
+        }
+        playNote(kd.freq, 0.4);
+        const rect = el.getBoundingClientRect();
+        effects.spawn(rect.left + rect.width/2, rect.top);
+      }
+    }, delay * (i + 1));
+    state.songTimers.push(timer);
+  });
+  
+  // Switch to input phase
+  const inputTimer = setTimeout(() => {
+    state.gameWatchPhase = false;
+    status.className = 'game-status play';
+    status.textContent = 'Your turn! Repeat the sequence';
+  }, delay * (state.gameSequence.length + 1));
+  state.songTimers.push(inputTimer);
+}
+
+function handleMemoryInput(note) {
+  if (state.gameWatchPhase) return;
+  
+  const expected = state.gameSequence[state.gameInputIndex];
+  const status = document.getElementById('game-status');
+  
+  if (note === expected) {
+    state.gameInputIndex++;
+    if (state.gameInputIndex >= state.gameSequence.length) {
+      status.className = 'game-status correct';
+      status.textContent = 'Correct! Next round...';
+      state.songTimers.push(setTimeout(() => nextRound(), 1000));
+    }
+  } else {
+    status.className = 'game-status wrong';
+    status.textContent = `Wrong! You reached level ${state.gameLevel}`;
+    state.gamePlaying = false;
+    document.getElementById('game-start-btn').textContent = 'Try Again';
+    showToast(`Game Over! Level: ${state.gameLevel}`, 'error');
+  }
+}
+
+function resetGame() {
+  state.gamePlaying = false;
+  state.gameWatchPhase = false;
+  state.gameSequence = [];
+  state.gameLevel = 0;
+  const scoreEl = document.getElementById('game-score');
+  const statusEl = document.getElementById('game-status');
+  const btnEl = document.getElementById('game-start-btn');
+  if (scoreEl) scoreEl.textContent = '0';
+  if (statusEl) { statusEl.className = 'game-status'; statusEl.textContent = 'Press Start to begin'; }
+  if (btnEl) btnEl.textContent = 'Start Game';
+}
+
+document.getElementById('game-start-btn').addEventListener('click', startGame);
+
+// ==================== RECORDING & REVIEW ====================
+function startRecording() {
+  state.isRecording = true;
+  state.recording = [];
+  state.recordingStartTime = Date.now();
+  document.getElementById('rec-badge').classList.add('active');
+  if (state.mode === 'freeplay') {
+    document.getElementById('fp-record-btn').textContent = 'Stop Recording';
+  }
+}
+
+function stopRecording() {
+  state.isRecording = false;
+  document.getElementById('rec-badge').classList.remove('active');
+  if (state.mode === 'freeplay') {
+    document.getElementById('fp-record-btn').textContent = 'Start Recording';
+  }
+}
+
+function toggleRecording() {
+  if (state.isRecording) stopRecording();
+  else startRecording();
+}
+
+document.getElementById('fp-record-btn').addEventListener('click', toggleRecording);
+
+// Review playback
+function playReview() {
+  if (state.recording.length === 0) {
+    showToast('No recording to review', 'error');
+    return;
+  }
+  
+  const modal = document.getElementById('review-modal');
+  modal.classList.add('active');
+  state.reviewPlaying = true;
+  
+  const speed = 3; // 3x fast forward
+  const totalDuration = state.recording[state.recording.length - 1].time;
+  const playbackDuration = totalDuration / speed;
+  
+  document.getElementById('rs-notes').textContent = state.recording.length;
+  document.getElementById('rs-duration').textContent = Math.round(totalDuration / 1000) + 's';
+  document.getElementById('rs-speed').textContent = speed + '×';
+  
+  const startTime = Date.now();
+  let noteIdx = 0;
+  
+  const tick = () => {
+    if (!state.reviewPlaying) return;
+    
+    const elapsed = (Date.now() - startTime) * speed;
+    const progress = Math.min(100, (elapsed / totalDuration) * 100);
+    document.getElementById('review-progress').style.width = progress + '%';
+    
+    while (noteIdx < state.recording.length && state.recording[noteIdx].time <= elapsed) {
+      const n = state.recording[noteIdx];
+      const kd = KEY_DEFS.find(k => k.note === n.note);
+      if (kd) triggerKey(kd, { duration: 0.5, noRecord: true, noCount: true });
+      noteIdx++;
+    }
+    
+    if (elapsed >= totalDuration) {
+      state.reviewPlaying = false;
+      setTimeout(() => {
+        // Keep modal open, user closes manually
+      }, 500);
+      return;
+    }
+    
+    requestAnimationFrame(tick);
+  };
+  tick();
+}
+
+document.getElementById('review-btn').addEventListener('click', playReview);
+document.getElementById('review-close-btn').addEventListener('click', () => {
+  document.getElementById('review-modal').classList.remove('active');
+  state.reviewPlaying = false;
+  document.getElementById('review-progress').style.width = '0%';
+});
+
+// ==================== COMPOSE ====================
+function saveComposition() {
+  const nameInput = document.getElementById('compose-name');
+  const name = nameInput.value.trim() || `Composition ${state.compositions.length + 1}`;
+  
+  if (state.recording.length === 0) {
+    showToast('Play some notes first!', 'error');
+    return;
+  }
+  
+  state.compositions.push({
+    name,
+    notes: [...state.recording],
+    created: Date.now()
+  });
+  
+  nameInput.value = '';
+  renderComposeList();
+  showToast(`"${name}" saved!`, 'success');
+}
+
+function renderComposeList() {
+  const list = document.getElementById('compose-list');
+  const empty = document.getElementById('compose-empty');
+  
+  if (state.compositions.length === 0) {
+    if (empty) empty.style.display = 'block';
+    list.querySelectorAll('.compose-item').forEach(el => el.remove());
+    return;
+  }
+  
+  if (empty) empty.style.display = 'none';
+  list.querySelectorAll('.compose-item').forEach(el => el.remove());
+  
+  state.compositions.forEach((comp, i) => {
+    const item = document.createElement('div');
+    item.className = 'compose-item';
+    item.innerHTML = `
+      <span class="compose-name">${comp.name}</span>
+      <div class="compose-actions">
+        <button class="mini-btn" data-action="play" data-idx="${i}">▶</button>
+        <button class="mini-btn del" data-action="del" data-idx="${i}">✕</button>
+      </div>
+    `;
+    list.appendChild(item);
+  });
+  
+  list.querySelectorAll('.mini-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.idx);
+      if (btn.dataset.action === 'play') playComposition(idx);
+      else deleteComposition(idx);
+    });
+  });
+}
+
+function playComposition(idx) {
+  const comp = state.compositions[idx];
+  if (!comp) return;
+  
+  document.getElementById('np-title').textContent = comp.name;
+  document.getElementById('np-status').textContent = 'Playing your composition...';
+  
+  const speed = 1.5;
+  comp.notes.forEach(n => {
+    const timer = setTimeout(() => {
+      const kd = KEY_DEFS.find(k => k.note === n.note);
+      if (kd) {
+        const el = getKeyElement(n.note);
+        if (el) {
+          el.classList.add('highlight');
+          setTimeout(() => el.classList.remove('highlight'), 300);
+        }
+        triggerKey(kd, { duration: 0.5, noRecord: true, noCount: true });
+      }
+    }, n.time / speed);
+    state.songTimers.push(timer);
+  });
+}
+
+function deleteComposition(idx) {
+  state.compositions.splice(idx, 1);
+  renderComposeList();
+  showToast('Composition deleted', 'success');
+}
+
+document.getElementById('compose-save-btn').addEventListener('click', saveComposition);
+document.getElementById('compose-clear-btn').addEventListener('click', () => {
+  state.recording = [];
+  startRecording();
+  showToast('Recording cleared', 'success');
+});
+
+// ==================== LESSONS ====================
+function buildLessonList() {
+  const list = document.getElementById('lesson-list');
+  LESSONS.forEach((lesson, i) => {
+    const item = document.createElement('div');
+    item.className = 'lesson-item song-item';
+    item.dataset.lesson = i;
+    item.innerHTML = `<div class="song-title">${lesson.title}</div><div class="song-composer">${lesson.desc}</div>`;
+    item.addEventListener('click', () => selectLesson(i));
+    list.appendChild(item);
+  });
+}
+
+function selectLesson(idx) {
+  state.currentLesson = idx;
+  state.lessonStep = 0;
+  document.querySelectorAll('.lesson-item').forEach((el, i) => el.classList.toggle('active', i === idx));
+  showLessonStep();
+}
+
+function showLessonStep() {
+  if (state.currentLesson === null) return;
+  const lesson = LESSONS[state.currentLesson];
+  const step = lesson.steps[state.lessonStep];
+  if (!step) return;
+  
+  const detail = document.getElementById('lesson-detail');
+  detail.innerHTML = `
+    <div class="lesson-step fade-in">
+      <p>${step.text}</p>
+      <div class="lesson-progress">Step ${state.lessonStep + 1} of ${lesson.steps.length}</div>
+    </div>
+  `;
+  
+  clearHighlights();
+  state.lessonExpectedNotes = [];
+  
+  if (step.highlight) {
+    step.highlight.forEach(note => {
+      const el = getKeyElement(note);
+      if (el) el.classList.add('highlight');
+    });
+  }
+  
+  if (step.expect) {
+    state.lessonExpectedNotes = [...step.expect];
+  }
+  
+  document.getElementById('np-title').textContent = lesson.title;
+  document.getElementById('np-status').textContent = `Step ${state.lessonStep + 1} of ${lesson.steps.length}`;
+}
+
+function handleLessonKeyPress(note) {
+  if (state.currentLesson === null) return;
+  if (state.lessonExpectedNotes.length === 0) return;
+  
+  const idx = state.lessonExpectedNotes.indexOf(note);
+  if (idx !== -1) {
+    state.lessonExpectedNotes.splice(idx, 1);
+    if (state.lessonExpectedNotes.length === 0) {
+      showToast('Correct!', 'success');
+      state.lessonStep++;
+      if (state.lessonStep < LESSONS[state.currentLesson].steps.length) {
+        setTimeout(showLessonStep, 800);
+      } else {
+        document.getElementById('lesson-detail').innerHTML = `
+          <div class="lesson-step fade-in" style="border-color:rgba(134,239,172,0.3)">
+            <p style="color:#86efac">🎉 Lesson complete! You've mastered this lesson.</p>
+          </div>
+        `;
+        clearHighlights();
+        showToast('Lesson complete!', 'success');
+      }
+    }
+  }
+}
+
+// ==================== EFFECTS UI ====================
+function buildEffectGrid() {
+  const grid = document.getElementById('effect-grid');
+  EFFECTS.forEach(eff => {
+    const btn = document.createElement('button');
+    btn.className = 'effect-btn' + (eff.id === state.currentEffect ? ' active' : '');
+    btn.dataset.effect = eff.id;
+    btn.innerHTML = `<span class="effect-icon">${eff.icon}</span><span class="effect-name">${eff.name}</span>`;
+    btn.addEventListener('click', () => {
+      state.currentEffect = eff.id;
+      document.querySelectorAll('.effect-btn').forEach(b => b.classList.toggle('active', b.dataset.effect === eff.id));
+      document.getElementById('stat-effect').textContent = eff.name;
+    });
+    grid.appendChild(btn);
+  });
+}
+
+// ==================== VOLUME ====================
+document.getElementById('volume-slider').addEventListener('input', (e) => {
+  state.volume = e.target.value / 100;
+  if (masterGain) masterGain.gain.value = state.volume;
+});
+
+// ==================== TOAST ====================
+function showToast(msg, type = 'info') {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = msg;
+  container.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add('show'));
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 300);
+  }, 2500);
+}
+
+// ==================== STATS ====================
+function updateStats() {
+  const elapsed = Math.floor((Date.now() - state.sessionStart) / 1000);
+  const mins = Math.floor(elapsed / 60);
+  const secs = elapsed % 60;
+  document.getElementById('stat-time').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+setInterval(updateStats, 1000);
+
+// ==================== KEY LEGEND ====================
+function buildKeyLegend() {
+  const legend = document.getElementById('key-legend');
+  const mainKeys = KEY_DEFS.filter(k => k.type === 'w' && ['C4','D4','E4','F4','G4','A4','B4'].includes(k.note));
+  mainKeys.forEach(kd => {
+    const item = document.createElement('div');
+    item.className = 'legend-item';
+    item.innerHTML = `<span class="legend-key">${kd.key.toUpperCase()}</span><span>${kd.sol} (${kd.note})</span>`;
+    legend.appendChild(item);
+  });
+}
+
+// ==================== INITIALIZATION ====================
+const galaxyBg = new GalaxyBg(document.getElementById('galaxy-bg'));
+const effects = new EffectSystem(document.getElementById('effects-canvas'));
+
+buildPiano();
+buildSongList();
+buildEffectGrid();
+buildLessonList();
+buildKeyLegend();
+
+// Click anywhere to init audio
+document.addEventListener('click', initAudio, { once: true });
+document.addEventListener('keydown', initAudio, { once: true });
+
+// Welcome toast
+setTimeout(() => showToast('Press A to play Do · Select a song to learn', 'success'), 800);
+</script>
+</body>
+</html>
